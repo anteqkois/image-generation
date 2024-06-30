@@ -8,3 +8,4 @@ coverage/
 .env.prod.build
 yarn.lock
 .env
+src/images/**

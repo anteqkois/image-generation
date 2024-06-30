@@ -12,25 +12,26 @@ export const saveArtifacts = async ({
 }: {
   mainName: string;
   description?: string | null;
-  image?: string;
+  image?: string | Buffer;
   imageFormat?: "png";
 }) => {
   const outputDirectory = `${mainName}_${dayjs().format("YYYY-MM-DD_HH:mm:ss")}`;
   const outputDirectoryPath = path.join(__dirname, `../../images/artifacts/${outputDirectory}`);
-	console.log(existsSync(outputDirectoryPath), outputDirectoryPath);
   if (!existsSync(outputDirectoryPath)) await mkdir(outputDirectoryPath, { recursive: true });
 
   if (description) {
     const filePath = path.join(outputDirectoryPath, `description.md`);
     await writeFile(filePath, description);
-    console.log(`#saveArtifacts save ${filePath}`);
+    console.log(`#saveArtifacts ${filePath}`);
   }
 
   if (image) {
     const filePath = path.join(outputDirectoryPath, `generated_image.${imageFormat}`);
-    await writeFile(filePath, Buffer.from(image, "base64"));
-    console.log(`#saveArtifacts save ${filePath}`);
+    await writeFile(filePath, Buffer.isBuffer(image) ? image : Buffer.from(image, "base64"));
+    console.log(`#saveArtifacts ${filePath}`);
   }
 
-  process.exit(0);
+  return {
+    outputDirectoryPath,
+  };
 };

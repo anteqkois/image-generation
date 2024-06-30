@@ -2,27 +2,33 @@ import "dotenv/config";
 import { readFile } from "fs/promises";
 import OpenAI from "openai";
 import path from "path";
+import { isExecutedFile } from "../helpers/get-executed-file-info";
+import { retriveFileInfo } from "../helpers/retrive-file-info";
 import { saveArtifacts } from "./save-artifacts";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+// const descriptionPromptWithArtist = ({ artistName }: { artistName: string }) =>
+//   `Create a detailed description of a music album cover of \`${artistName}\` album/track. Describe the \`visual elements\`, vcolors\`, and \`overall design\`. Mention any \`specific themes\`, \`symbols\`, or \`artistic styles used\`. Provide enough detail so that the description can be used to recreate a similar album cover.`;
+// const descriptionPrompt = () =>
+//   `Create a detailed description of a music album cover of album/track. Describe the \`visual elements\`, vcolors\`, and \`overall design\`. Mention any \`specific themes\`, \`symbols\`, or \`artistic styles used\`. Provide enough detail so that the description can be used to recreate a similar album cover.`;
+
 const descriptionPromptWithArtist = ({ artistName }: { artistName: string }) =>
-  `Create a detailed description of a music album cover of \`${artistName}\` album/track. Describe the \`visual elements\`, vcolors\`, and \`overall design\`. Mention any \`specific themes\`, \`symbols\`, or \`artistic styles used\`. Provide enough detail so that the description can be used to recreate a similar album cover.`;
+  `Create a detailed description of a music album cover of \`${artistName}\` album/track. Describe the \`visual elements\`, colors\`, and \`overall design\`. Mention any \`specific themes\`, \`symbols\`, or \`artistic styles used\`. Provide enough detail so that the description can be used to recreate a similar album cover. Don't include any parental advisory elements. Answer in an easy-to-understand format for the image AI model`;
 const descriptionPrompt = () =>
-  `Create a detailed description of a music album cover of album/track. Describe the \`visual elements\`, vcolors\`, and \`overall design\`. Mention any \`specific themes\`, \`symbols\`, or \`artistic styles used\`. Provide enough detail so that the description can be used to recreate a similar album cover.`;
+  `Create a detailed description of a music album cover of album/track. Describe the \`visual elements\`, vcolors\`, and \`overall design\`. Mention any \`specific themes\`, \`symbols\`, or \`artistic styles used\`. Provide enough detail so that the description can be used to recreate a similar album cover. Don't include any parental advisory elements. Answer in an easy-to-understand format for the image AI model`;
 
 export const generateDescription = async ({
   artistName,
   imageFilePath,
-  imageFormat,
 }: {
   artistName?: string;
   imageFilePath: string;
-  imageFormat: "png" | "jpg";
 }) => {
-  const originalImageBuffer: Buffer = await readFile(`${imageFilePath}.${imageFormat}`);
+  const { extension } = retriveFileInfo(imageFilePath);
+  const originalImageBuffer: Buffer = await readFile(imageFilePath);
   const originalImageBase64String = originalImageBuffer.toString("base64");
 
   const response = await openai.chat.completions.create({
@@ -48,7 +54,7 @@ export const generateDescription = async ({
           {
             type: "image_url",
             image_url: {
-              url: `data:image/${imageFormat};base64,${originalImageBase64String}`,
+              url: `data:image/${extension};base64,${originalImageBase64String}`,
               detail: "auto",
             },
           },
@@ -57,20 +63,19 @@ export const generateDescription = async ({
     ],
   });
 
-  return response.choices[0].message.content;
+  return { imageDescription: response.choices[0].message.content };
 };
 
 const main = async () => {
   const imageName = "sad";
-  const imageFormat = "png";
-  const imageFilePath = path.join(__dirname, `../../images/originals/${imageName}`);
+  const imageFilePath = path.join(__dirname, `../../images/originals/${imageName}.png`);
 
-  // const description = await generateDescription({
+  // const { imageDescription } = await generateDescription({
   //   artistName: "XXXTENTACION",
   //   imageFilePath: imageFilePath,
   //   imageFormat: imageFormat,
   // });
-	const description = `The album cover of XXXTENTACION’s track is visually striking and minimalist, yet rich with texture and detail. It predominantly employs a monochromatic color scheme of black and white, which adds to its stark and somber aesthetic.
+  const imageDescription = `The album cover of XXXTENTACION’s track is visually striking and minimalist, yet rich with texture and detail. It predominantly employs a monochromatic color scheme of black and white, which adds to its stark and somber aesthetic.
 
 ### Visual Elements:
 - **Central Focus:** The focal point of the album cover is a large, bold question mark ("?") located in the middle. This question mark dominates the otherwise clean white background.
@@ -94,17 +99,18 @@ const main = async () => {
 - **Collage:** The use of a collage technique for the imagery within the question mark and border adds depth and a sense of chaos.
 - **Monochromatic:** The black-and-white color scheme creates a timeless, classic look and emphasizes contrast and emotion.
 
-In recreating a similar album cover, one would need to focus on maintaining the balance between minimalism and detailed collage work, using the monochromatic color scheme to evoke a strong emotional response while incorporating personal and abstract imagery within the focal symbol and its surrounding areas.`
+In recreating a similar album cover, one would need to focus on maintaining the balance between minimalism and detailed collage work, using the monochromatic color scheme to evoke a strong emotional response while incorporating personal and abstract imagery within the focal symbol and its surrounding areas.`;
 
   await saveArtifacts({
     mainName: imageName,
-    description,
+    description: imageDescription,
   });
-  console.log(description);
+  console.log(imageDescription);
 
   process.exit(0);
 };
 
-main()
-  .then()
-  .catch((err) => console.log(err));
+isExecutedFile() &&
+  main()
+    .then()
+    .catch((err) => console.log(err));
