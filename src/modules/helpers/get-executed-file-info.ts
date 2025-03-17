@@ -23,5 +23,5 @@ export const getExecutedFileInfo = () => {
 
 export const isExecutedFile = ()=>{
 	const mainModule = require.main;
-	return __filename === mainModule?.filename
+	return process.argv[1] === mainModule?.filename
 } 
